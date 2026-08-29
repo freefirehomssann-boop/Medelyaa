@@ -1,6 +1,0 @@
-name = "medelyaa"
-pages_build_output_dir = "dist"
-compatibility_date = "2026-08-29"
-[build]
-command = "pnpm install --no-frozen-lockfile && pnpm build"
-package_manager = "pnpm"
