@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Medelya Medical Intelligence"
+description = "A multilingual intelligent medical workspace for physicians to organize cases, analyze clinical information, generate reports, and manage their practice workflow."
+version = "1.0.0"
+id = "artifacts/medelya"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21859
+
+[services.development]
+run = "pnpm --filter @workspace/medelya run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/medelya", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/medelya/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21859"
+BASE_PATH = "/"

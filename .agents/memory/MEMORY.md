@@ -1,0 +1,1 @@
+- [OpenAPI/Zod compatibility](api-contract-zod-compat.md) — numeric schema generation must stay compatible with the workspace’s Zod runtime.

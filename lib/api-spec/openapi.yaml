@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: workspace
+    description: Physician workspace operations
 paths:
   /healthz:
     get:
@@ -24,7 +26,161 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [workspace]
+      summary: Get physician dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /cases:
+    get:
+      operationId: listCases
+      tags: [workspace]
+      summary: List recent medical cases
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, review, archived]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Medical cases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MedicalCase"
+    post:
+      operationId: createCase
+      tags: [workspace]
+      summary: Create a medical case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaseInput"
+      responses:
+        "201":
+          description: Created case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedicalCase"
+  /cases/{caseId}:
+    get:
+      operationId: getCase
+      tags: [workspace]
+      summary: Get a medical case
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Medical case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedicalCaseDetail"
+        "404":
+          description: Case not found
+    patch:
+      operationId: updateCase
+      tags: [workspace]
+      summary: Update a medical case
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaseUpdate"
+      responses:
+        "200":
+          description: Updated case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedicalCase"
+    delete:
+      operationId: deleteCase
+      tags: [workspace]
+      summary: Archive a medical case
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "204":
+          description: Case archived
+  /cases/{caseId}/messages:
+    post:
+      operationId: sendCaseMessage
+      tags: [workspace]
+      summary: Add a message to a case
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Message added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseMessage"
+  /cases/{caseId}/report:
+    get:
+      operationId: getCaseReport
+      tags: [workspace]
+      summary: Get a case report
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseReport"
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [workspace]
+      summary: List recent workspace activity
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
 components:
+  parameters:
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema:
+        type: number
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +189,103 @@ components:
           type: string
       required:
         - status
+    Dashboard:
+      type: object
+      required: [activeCases, reviewedToday, urgentAlerts, accuracy, trend]
+      properties:
+        activeCases: { type: number }
+        reviewedToday: { type: number }
+        urgentAlerts: { type: number }
+        accuracy: { type: number }
+        trend: { type: array, items: { type: number } }
+    MedicalCase:
+      type: object
+      required: [id, patientLabel, title, specialty, status, priority, updatedAt, confidence]
+      properties:
+        id: { type: number }
+        patientLabel: { type: string }
+        title: { type: string }
+        specialty: { type: string }
+        status: { type: string, enum: [active, review, archived] }
+        priority: { type: string, enum: [normal, urgent] }
+        updatedAt: { type: string }
+        confidence: { type: number }
+        age: { type: ["number", "null"] }
+        sex: { type: ["string", "null"] }
+        tags: { type: array, items: { type: string } }
+    MedicalCaseDetail:
+      allOf:
+        - $ref: "#/components/schemas/MedicalCase"
+        - type: object
+          required: [messages, summary, findings]
+          properties:
+            messages:
+              type: array
+              items: { $ref: "#/components/schemas/CaseMessage" }
+            summary: { type: string }
+            findings:
+              type: array
+              items: { $ref: "#/components/schemas/Finding" }
+    CaseMessage:
+      type: object
+      required: [id, role, content, createdAt]
+      properties:
+        id: { type: number }
+        role: { type: string, enum: [doctor, assistant, system] }
+        content: { type: string }
+        createdAt: { type: string }
+        citations: { type: array, items: { type: string } }
+    Finding:
+      type: object
+      required: [label, value, tone]
+      properties:
+        label: { type: string }
+        value: { type: string }
+        tone: { type: string, enum: [positive, caution, neutral, urgent] }
+    CaseReport:
+      type: object
+      required: [caseId, title, generatedAt, sections]
+      properties:
+        caseId: { type: number }
+        title: { type: string }
+        generatedAt: { type: string }
+        sections:
+          type: array
+          items:
+            type: object
+            required: [title, body]
+            properties:
+              title: { type: string }
+              body: { type: string }
+    ActivityItem:
+      type: object
+      required: [id, type, title, detail, time]
+      properties:
+        id: { type: number }
+        type: { type: string, enum: [analysis, report, upload, alert] }
+        title: { type: string }
+        detail: { type: string }
+        time: { type: string }
+    CaseInput:
+      type: object
+      required: [patientLabel, title, specialty]
+      properties:
+        patientLabel: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1 }
+        specialty: { type: string, minLength: 1 }
+        age: { type: number, minimum: 0, maximum: 120 }
+        sex: { type: string }
+        tags: { type: array, items: { type: string } }
+    CaseUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        status: { type: string, enum: [active, review, archived] }
+        priority: { type: string, enum: [normal, urgent] }
+        tags: { type: array, items: { type: string } }
+    MessageInput:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1 }
 
